@@ -2,11 +2,11 @@
 
 ![0xchou00 banner](./media/0xchou00_banner.svg)
 
-0xchou00 platform is a Linux-ready SIEM and detection engineering project built to ingest SSH and web logs, normalize them into a consistent event schema, generate alerts through multiple detection layers, and preserve those artifacts inside a tamper-evident chain. The emphasis is on traceable engineering, not marketing language.
+0xchou00 platform is a Linux-ready SIEM built to ingest SSH and web logs, normalize them into a consistent event schema, generate alerts through multiple detection layers, and preserve those artifacts inside a tamper-evident chain. The emphasis is on traceable engineering, not marketing language.
 
 ## Why this project exists
 
-0xchou00 platform was built as a personal flagship project under the `0xchou00` identity to demonstrate practical SOC and SIEM engineering:
+0xchou00 platform is structured to demonstrate practical SOC and SIEM engineering:
 
 - event normalization across heterogeneous sources
 - heuristic detection and externalized rule content

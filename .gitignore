@@ -4,3 +4,5 @@ __pycache__/
 backend/data/
 logs/*.log
 .env
+media/linkedin_post.md
+media/medium_article.md
