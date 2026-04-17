@@ -187,10 +187,12 @@ function renderLogs(logs) {
         <div class="item-meta">
           <span>ip:${escapeHtml(log.source_ip || "n/a")}</span>
           <span>user:${escapeHtml(log.username || normalized.username || "n/a")}</span>
-          <span>status:${escapeHtml(String(normalized.status || normalized.http_status || "n/a"))}</span>
-        </div>
-      </article>
-    `;
+            <span>status:${escapeHtml(String(normalized.status || normalized.http_status || "n/a"))}</span>
+            <span>country:${escapeHtml(log.country || normalized.country || "n/a")}</span>
+            <span>mal:${escapeHtml(String(log.is_malicious ?? normalized.is_malicious ?? false))}</span>
+          </div>
+        </article>
+      `;
   }).join("");
 }
 

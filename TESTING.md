@@ -1,6 +1,4 @@
-# 0xchou00 platform testing guide
-
-This guide is written for a Linux user starting cold.
+# 0xchou00 Detection Tool Testing Guide
 
 ## 1. Install and start
 
@@ -9,144 +7,118 @@ cd siem-project
 chmod +x install.sh
 ./install.sh
 sudo systemctl start 0xchou00.service
-sudo systemctl status 0xchou00.service
+sudo systemctl start 0xchou00-agent.service
 ```
 
-Confirm health:
+Check status:
 
 ```bash
+sudo systemctl status 0xchou00.service
+sudo systemctl status 0xchou00-agent.service
 curl http://127.0.0.1:8000/health
 ```
 
-Expected:
-
-```json
-{"status":"ok","logs":0,"alerts":0}
-```
-
-## 2. Use test API keys
+## 2. Test API keys
 
 - analyst: `siem-analyst-dev-key`
 - viewer: `siem-viewer-dev-key`
 
-## 3. Simulate SSH brute force
-
-This scenario should trigger the brute-force detector and produce a visible alert in the dashboard.
-
-```bash
-for i in $(seq 1 6); do
-  curl -X POST http://127.0.0.1:8000/ingest \
-    -H "Content-Type: application/json" \
-    -H "X-API-Key: siem-analyst-dev-key" \
-    -d "{
-      \"source_type\": \"ssh\",
-      \"lines\": [
-        \"Jan 15 03:21:0$i web01 sshd[$((1000+i))]: Failed password for root from 203.0.113.50 port $((55000+i)) ssh2\"
-      ]
-    }"
-done
-```
-
-Expected alert behavior:
-
-- detector: `brute_force`
-- source IP: `203.0.113.50`
-- severity: `high` or `critical`
-- non-zero `event_count`
-
-Verify:
-
-```bash
-curl "http://127.0.0.1:8000/alerts?since_minutes=60&source_type=ssh" \
-  -H "X-API-Key: siem-viewer-dev-key"
-```
-
-## 4. Simulate suspicious web probing
+## 3. SSH brute force
 
 ```bash
 curl -X POST http://127.0.0.1:8000/ingest \
   -H "Content-Type: application/json" \
   -H "X-API-Key: siem-analyst-dev-key" \
   -d '{
-    "source_type": "apache",
+    "source_type": "ssh",
     "lines": [
-      "198.51.100.10 - - [15/Jan/2024:03:02:00 +0000] \"GET /.env HTTP/1.1\" 404 209 \"-\" \"curl/8.0\""
+      "Jan 15 03:21:00 web01 sshd[1001]: Failed password for root from 203.0.113.50 port 55001 ssh2",
+      "Jan 15 03:21:01 web01 sshd[1002]: Failed password for root from 203.0.113.50 port 55002 ssh2",
+      "Jan 15 03:21:02 web01 sshd[1003]: Failed password for root from 203.0.113.50 port 55003 ssh2",
+      "Jan 15 03:21:03 web01 sshd[1004]: Failed password for root from 203.0.113.50 port 55004 ssh2",
+      "Jan 15 03:21:04 web01 sshd[1005]: Failed password for root from 203.0.113.50 port 55005 ssh2"
     ]
   }'
 ```
 
-Expected alert behavior:
+Expected:
 
-- detector: `suspicious_ip`
-- severity: `medium`
-- metadata contains the probed path
+- at least one `brute_force` alert
+- `event_count >= 5`
+- source IP `203.0.113.50`
 
-## 5. Simulate YAML rule hit
-
-This scenario targets the default invalid-user aggregation rule.
+## 4. Sensitive web probing
 
 ```bash
-for i in $(seq 1 3); do
-  curl -X POST http://127.0.0.1:8000/ingest \
-    -H "Content-Type: application/json" \
-    -H "X-API-Key: siem-analyst-dev-key" \
-    -d "{
-      \"source_type\": \"ssh\",
-      \"lines\": [
-        \"Jan 15 03:30:0$i web01 sshd[$((2000+i))]: Failed password for invalid user backup from 198.51.100.77 port $((56000+i)) ssh2\"
-      ]
-    }"
-done
+curl -X POST http://127.0.0.1:8000/ingest \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: siem-analyst-dev-key" \
+  -d '{
+    "source_type": "nginx",
+    "lines": [
+      "203.0.113.50 - - [15/Jan/2026:03:22:00 +0000] \"GET /.env HTTP/1.1\" 404 123 \"-\" \"curl/8.0\"",
+      "203.0.113.50 - - [15/Jan/2026:03:22:01 +0000] \"GET /.git/config HTTP/1.1\" 404 123 \"-\" \"curl/8.0\""
+    ]
+  }'
 ```
 
-Expected alert behavior:
+Expected:
 
-- detector: `yaml_rules`
-- title: `Invalid SSH user burst`
+- `suspicious_ip` alerts for sensitive paths
+- `yaml_rules` alerts for scanner user agents
+- one `correlation` alert tying SSH and web behavior together
 
-## 6. Simulate anomaly spike
+## 5. Enrichment verification
 
-Warm the baseline first:
+Read logs:
 
 ```bash
-for round in $(seq 1 5); do
-  for i in $(seq 1 3); do
-    curl -X POST http://127.0.0.1:8000/ingest \
-      -H "Content-Type: application/json" \
-      -H "X-API-Key: siem-analyst-dev-key" \
-      -d "{
-        \"source_type\": \"apache\",
-        \"lines\": [
-          \"203.0.113.88 - - [15/Jan/2024:03:4$round:0$i +0000] \\\"GET / HTTP/1.1\\\" 200 1234 \\\"-\\\" \\\"Mozilla/5.0\\\"\"
-        ]
-      }"
-  done
-  sleep 61
-done
+curl "http://127.0.0.1:8000/logs?since_minutes=60" \
+  -H "X-API-Key: siem-viewer-dev-key"
 ```
 
-Then spike the same source:
+Expected fields on each event:
+
+- `country`
+- `is_malicious`
+- `reputation_score`
+- `enrichment_source`
+
+If `203.0.113.50` remains in `rules/static_blacklist.txt`, the event should show:
+
+- `is_malicious: true`
+- `enrichment_source: static_blacklist`
+
+## 6. Correlation verification
 
 ```bash
-for i in $(seq 1 20); do
-  curl -X POST http://127.0.0.1:8000/ingest \
-    -H "Content-Type: application/json" \
-    -H "X-API-Key: siem-analyst-dev-key" \
-    -d "{
-      \"source_type\": \"apache\",
-      \"lines\": [
-        \"203.0.113.88 - - [15/Jan/2024:03:59:$i +0000] \\\"GET /burst HTTP/1.1\\\" 200 1234 \\\"-\\\" \\\"Mozilla/5.0\\\"\"
-      ]
-    }"
-done
+curl "http://127.0.0.1:8000/alerts?since_minutes=60" \
+  -H "X-API-Key: siem-viewer-dev-key"
 ```
 
-Expected alert behavior:
+Expected correlation fields:
 
-- detector: `anomaly_frequency`
-- description includes the current window count and baseline average
+- `detector: correlation`
+- `alert_kind: correlation`
+- `correlation_rule_id`
+- evidence containing the matched detector alerts
 
-## 7. Verify integrity
+## 7. Agent verification
+
+Update `agent/config.yaml` if needed, then:
+
+```bash
+sudo systemctl restart 0xchou00-agent.service
+journalctl -u 0xchou00-agent.service -f
+```
+
+Append a line to a watched log file and confirm:
+
+- the line is forwarded to `/ingest`
+- `/logs` count increases
+- `agent/state.json` updates with the latest offset
+
+## 8. Integrity verification
 
 ```bash
 curl http://127.0.0.1:8000/integrity/verify \
@@ -156,29 +128,23 @@ curl http://127.0.0.1:8000/integrity/verify \
 Expected:
 
 - `valid: true`
-- `entries` greater than zero
+- `entries > 0`
 - `chain_head` populated
 
-## 8. Verify the dashboard
+## 9. Dashboard verification
 
-1. Open `http://127.0.0.1:8000/`
-2. Move to `/dashboard`
-3. Enter `siem-viewer-dev-key`
-4. Confirm:
-   - alerts appear after ingest
-   - logs appear after ingest
-   - severity/source/time filters change results
-   - connection state changes to `LIVE`
+1. Open `http://127.0.0.1:8000/dashboard`
+2. Enter `siem-viewer-dev-key`
+3. Confirm:
+   - logs show enrichment fields
+   - alerts show detector and correlation output
+   - severity and source filters change the result set
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 ```bash
 sudo systemctl status 0xchou00.service
+sudo systemctl status 0xchou00-agent.service
 journalctl -u 0xchou00.service -f
+journalctl -u 0xchou00-agent.service -f
 ```
-
-If alerts do not appear:
-
-- check that the log format matches SSH or Apache/Nginx expectations
-- check the selected time window in the dashboard
-- check that the API key has enough privilege

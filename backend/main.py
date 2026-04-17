@@ -11,9 +11,9 @@ from app.storage.sqlite import SQLiteStorage
 def create_app() -> FastAPI:
     frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
     app = FastAPI(
-        title="0xchou00 platform",
+        title="0xchou00 Detection Tool",
         version="0.2.0",
-        description="0xchou00 cyber telemetry and detection platform.",
+        description="Lightweight single-node security detection tool for SSH and web telemetry.",
     )
 
     @app.on_event("startup")

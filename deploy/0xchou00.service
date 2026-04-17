@@ -1,5 +1,5 @@
 [Unit]
-Description=0xchou00 platform
+Description=0xchou00 Detection Tool
 After=network.target
 
 [Service]
