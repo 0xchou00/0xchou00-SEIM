@@ -4,10 +4,10 @@ import json
 import os
 import secrets
 import sqlite3
-from hashlib import sha256
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from hashlib import sha256
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -32,7 +32,7 @@ class APIKeyRecord:
 
 
 class SQLiteStorage:
-    """SQLite-backed persistence for normalized logs, alerts, and API keys."""
+    """Persist events, alerts, enrichment cache, and integrity state in SQLite."""
 
     def __init__(self, db_path: str | Path = DEFAULT_DB_PATH) -> None:
         self.db_path = Path(db_path)
@@ -65,7 +65,17 @@ class SQLiteStorage:
                     source_ip TEXT,
                     hostname TEXT,
                     username TEXT,
+                    process TEXT,
+                    status TEXT,
                     severity TEXT NOT NULL,
+                    http_method TEXT,
+                    http_path TEXT,
+                    http_status INTEGER,
+                    http_user_agent TEXT,
+                    country TEXT,
+                    is_malicious INTEGER NOT NULL DEFAULT 0,
+                    reputation_score INTEGER,
+                    enrichment_source TEXT,
                     raw_message TEXT NOT NULL,
                     normalized_json TEXT NOT NULL,
                     created_at TEXT NOT NULL
@@ -74,6 +84,9 @@ class SQLiteStorage:
                 CREATE TABLE IF NOT EXISTS alerts (
                     id TEXT PRIMARY KEY,
                     detector TEXT NOT NULL,
+                    alert_kind TEXT NOT NULL DEFAULT 'detection',
+                    correlation_rule_id TEXT,
+                    correlation_fingerprint TEXT,
                     severity TEXT NOT NULL,
                     title TEXT NOT NULL,
                     description TEXT NOT NULL,
@@ -104,13 +117,32 @@ class SQLiteStorage:
                     created_at TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS enrichment_cache (
+                    ip TEXT PRIMARY KEY,
+                    country TEXT,
+                    is_malicious INTEGER NOT NULL DEFAULT 0,
+                    reputation_score INTEGER,
+                    source TEXT,
+                    payload_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    expires_at TEXT NOT NULL
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_logs_source_type ON logs(source_type, created_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_logs_source_ip ON logs(source_ip, created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity, created_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_alerts_source_ip ON alerts(source_ip, created_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_alerts_kind ON alerts(alert_kind, created_at DESC);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_alerts_correlation_fingerprint
+                    ON alerts(correlation_fingerprint)
+                    WHERE correlation_fingerprint IS NOT NULL;
                 CREATE INDEX IF NOT EXISTS idx_chain_sequence ON chain_entries(sequence);
                 """
             )
+            self._migrate_logs_table(conn)
+            self._migrate_alerts_table(conn)
 
         self.seed_default_api_keys()
 
@@ -171,10 +203,12 @@ class SQLiteStorage:
             cursor = conn.execute(
                 """
                 INSERT INTO logs (
-                    timestamp, source_type, event_type, source_ip, hostname,
-                    username, severity, raw_message, normalized_json, created_at
+                    timestamp, source_type, event_type, source_ip, hostname, username,
+                    process, status, severity, http_method, http_path, http_status,
+                    http_user_agent, country, is_malicious, reputation_score,
+                    enrichment_source, raw_message, normalized_json, created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     payload["timestamp"],
@@ -183,7 +217,17 @@ class SQLiteStorage:
                     event.source_ip,
                     event.hostname,
                     event.username,
+                    event.process,
+                    event.status,
                     event.severity,
+                    event.http_method,
+                    event.http_path,
+                    event.http_status,
+                    event.http_user_agent,
+                    event.country,
+                    int(event.is_malicious),
+                    event.reputation_score,
+                    event.enrichment_source,
                     event.raw_message,
                     json.dumps(payload, sort_keys=True, default=str),
                     self._utc_now(),
@@ -193,18 +237,23 @@ class SQLiteStorage:
 
     def insert_alert(self, alert: Alert) -> str:
         payload = alert.to_dict()
+        metadata = payload["metadata"]
         with self.connection() as conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO alerts (
-                    id, detector, severity, title, description, source_type,
-                    source_ip, event_count, evidence_json, metadata_json, created_at
+                    id, detector, alert_kind, correlation_rule_id, correlation_fingerprint,
+                    severity, title, description, source_type, source_ip, event_count,
+                    evidence_json, metadata_json, created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     alert.alert_id,
                     alert.detector,
+                    metadata.get("alert_kind", "detection"),
+                    metadata.get("correlation_rule_id"),
+                    metadata.get("correlation_fingerprint"),
                     alert.severity,
                     alert.title,
                     alert.description,
@@ -212,7 +261,7 @@ class SQLiteStorage:
                     alert.source_ip,
                     alert.event_count,
                     json.dumps(payload["evidence"]),
-                    json.dumps(payload["metadata"]),
+                    json.dumps(metadata),
                     payload["created_at"],
                 ),
             )
@@ -227,8 +276,10 @@ class SQLiteStorage:
         since: str | None = None,
     ) -> list[dict[str, Any]]:
         query = """
-            SELECT id, timestamp, source_type, event_type, source_ip, hostname,
-                   username, severity, raw_message, normalized_json, created_at
+            SELECT id, timestamp, source_type, event_type, source_ip, hostname, username,
+                   process, status, severity, http_method, http_path, http_status,
+                   http_user_agent, country, is_malicious, reputation_score,
+                   enrichment_source, raw_message, normalized_json, created_at
             FROM logs
         """
         conditions: list[str] = []
@@ -256,6 +307,7 @@ class SQLiteStorage:
         results: list[dict[str, Any]] = []
         for row in rows:
             item = dict(row)
+            item["is_malicious"] = bool(item["is_malicious"])
             item["normalized"] = json.loads(item.pop("normalized_json"))
             results.append(item)
         return results
@@ -268,10 +320,13 @@ class SQLiteStorage:
         detector: str | None = None,
         source_type: str | None = None,
         since: str | None = None,
+        source_ip: str | None = None,
+        alert_kind: str | None = None,
     ) -> list[dict[str, Any]]:
         query = """
-            SELECT id, detector, severity, title, description, source_type,
-                   source_ip, event_count, evidence_json, metadata_json, created_at
+            SELECT id, detector, alert_kind, correlation_rule_id, correlation_fingerprint,
+                   severity, title, description, source_type, source_ip, event_count,
+                   evidence_json, metadata_json, created_at
             FROM alerts
         """
         conditions: list[str] = []
@@ -289,6 +344,12 @@ class SQLiteStorage:
         if since:
             conditions.append("created_at >= ?")
             params.append(since)
+        if source_ip:
+            conditions.append("source_ip = ?")
+            params.append(source_ip)
+        if alert_kind:
+            conditions.append("alert_kind = ?")
+            params.append(alert_kind)
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
@@ -299,19 +360,77 @@ class SQLiteStorage:
         with self.connection() as conn:
             rows = conn.execute(query, params).fetchall()
 
-        results: list[dict[str, Any]] = []
-        for row in rows:
-            item = dict(row)
-            item["evidence"] = json.loads(item.pop("evidence_json"))
-            item["metadata"] = json.loads(item.pop("metadata_json"))
-            results.append(item)
-        return results
+        return [self._row_to_alert_dict(row) for row in rows]
 
     def get_counts(self) -> dict[str, int]:
         with self.connection() as conn:
             logs_count = conn.execute("SELECT COUNT(*) FROM logs").fetchone()[0]
             alerts_count = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
         return {"logs": int(logs_count), "alerts": int(alerts_count)}
+
+    def correlation_fingerprint_exists(self, fingerprint: str) -> bool:
+        with self.connection() as conn:
+            row = conn.execute(
+                "SELECT id FROM alerts WHERE correlation_fingerprint = ?",
+                (fingerprint,),
+            ).fetchone()
+        return row is not None
+
+    def get_enrichment_cache(self, ip: str) -> dict[str, Any] | None:
+        with self.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT ip, country, is_malicious, reputation_score, source, payload_json,
+                       updated_at, expires_at
+                FROM enrichment_cache
+                WHERE ip = ?
+                """,
+                (ip,),
+            ).fetchone()
+        if not row:
+            return None
+        if row["expires_at"] < self._utc_now():
+            return None
+        payload = json.loads(row["payload_json"])
+        return {
+            "ip": row["ip"],
+            "country": row["country"],
+            "is_malicious": bool(row["is_malicious"]),
+            "reputation_score": row["reputation_score"],
+            "source": row["source"],
+            "payload": payload,
+            "updated_at": row["updated_at"],
+            "expires_at": row["expires_at"],
+        }
+
+    def upsert_enrichment_cache(self, ip: str, payload: dict[str, Any]) -> None:
+        with self.connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO enrichment_cache (
+                    ip, country, is_malicious, reputation_score, source, payload_json, updated_at, expires_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(ip) DO UPDATE SET
+                    country = excluded.country,
+                    is_malicious = excluded.is_malicious,
+                    reputation_score = excluded.reputation_score,
+                    source = excluded.source,
+                    payload_json = excluded.payload_json,
+                    updated_at = excluded.updated_at,
+                    expires_at = excluded.expires_at
+                """,
+                (
+                    ip,
+                    payload.get("country"),
+                    int(bool(payload.get("is_malicious"))),
+                    payload.get("reputation_score"),
+                    payload.get("source"),
+                    json.dumps(payload.get("payload") or {}, sort_keys=True),
+                    self._utc_now(),
+                    payload["expires_at"],
+                ),
+            )
 
     def append_chain_entry(self, entity_type: str, entity_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         payload_json = json.dumps(payload, sort_keys=True, default=str)
@@ -388,14 +507,10 @@ class SQLiteStorage:
             )
 
             if item["prev_hash"] != expected_prev_hash:
-                errors.append(
-                    f"Sequence {item['sequence']} has broken prev_hash linkage."
-                )
+                errors.append(f"Sequence {item['sequence']} has broken prev_hash linkage.")
 
             if item["entry_hash"] != expected_hash:
-                errors.append(
-                    f"Sequence {item['sequence']} has an invalid entry hash."
-                )
+                errors.append(f"Sequence {item['sequence']} has an invalid entry hash.")
 
             current_payload_hash = self._load_entity_payload_hash(
                 entity_type=item["entity_type"],
@@ -453,8 +568,9 @@ class SQLiteStorage:
             elif entity_type == "alert":
                 row = conn.execute(
                     """
-                    SELECT id, detector, severity, title, description, source_type, source_ip,
-                           event_count, evidence_json, metadata_json, created_at
+                    SELECT id, detector, alert_kind, correlation_rule_id, correlation_fingerprint,
+                           severity, title, description, source_type, source_ip, event_count,
+                           evidence_json, metadata_json, created_at
                     FROM alerts
                     WHERE id = ?
                     """,
@@ -482,6 +598,38 @@ class SQLiteStorage:
                 return None
 
         return sha256(payload.encode("utf-8")).hexdigest()
+
+    def _migrate_logs_table(self, conn: sqlite3.Connection) -> None:
+        self._ensure_column(conn, "logs", "process", "TEXT")
+        self._ensure_column(conn, "logs", "status", "TEXT")
+        self._ensure_column(conn, "logs", "http_method", "TEXT")
+        self._ensure_column(conn, "logs", "http_path", "TEXT")
+        self._ensure_column(conn, "logs", "http_status", "INTEGER")
+        self._ensure_column(conn, "logs", "http_user_agent", "TEXT")
+        self._ensure_column(conn, "logs", "country", "TEXT")
+        self._ensure_column(conn, "logs", "is_malicious", "INTEGER NOT NULL DEFAULT 0")
+        self._ensure_column(conn, "logs", "reputation_score", "INTEGER")
+        self._ensure_column(conn, "logs", "enrichment_source", "TEXT")
+
+    def _migrate_alerts_table(self, conn: sqlite3.Connection) -> None:
+        self._ensure_column(conn, "alerts", "alert_kind", "TEXT NOT NULL DEFAULT 'detection'")
+        self._ensure_column(conn, "alerts", "correlation_rule_id", "TEXT")
+        self._ensure_column(conn, "alerts", "correlation_fingerprint", "TEXT")
+
+    def _ensure_column(self, conn: sqlite3.Connection, table_name: str, column_name: str, column_sql: str) -> None:
+        existing = {
+            row["name"]
+            for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+        }
+        if column_name in existing:
+            return
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_sql}")
+
+    def _row_to_alert_dict(self, row: sqlite3.Row) -> dict[str, Any]:
+        item = dict(row)
+        item["evidence"] = json.loads(item.pop("evidence_json"))
+        item["metadata"] = json.loads(item.pop("metadata_json"))
+        return item
 
     def _utc_now(self) -> str:
         return datetime.now(timezone.utc).isoformat()

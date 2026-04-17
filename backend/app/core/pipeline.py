@@ -4,9 +4,11 @@ from dataclasses import dataclass, field
 
 from app.core.config import PipelineConfig
 from app.detection.engine import DetectionEngine
+from app.enrichment.ip_enricher import IPEnrichmentService
 from app.ingestion.normalizer import LogNormalizer
 from app.models.alert import Alert
 from app.models.event import LogEvent
+from app.storage.sqlite import SQLiteStorage
 
 
 @dataclass(slots=True)
@@ -16,11 +18,17 @@ class PipelineResult:
 
 
 class ProcessingPipeline:
-    """Coordinate normalization and detection for incoming log lines."""
+    """Normalize raw input, enrich the event, then evaluate detection logic."""
 
-    def __init__(self, config: PipelineConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: PipelineConfig | None = None,
+        storage: SQLiteStorage | None = None,
+    ) -> None:
         self.config = config or PipelineConfig()
+        self.storage = storage or SQLiteStorage()
         self.normalizer = LogNormalizer()
+        self.enrichment = IPEnrichmentService(self.storage, self.config.enrichment)
         self.engine = DetectionEngine(self.config)
 
     def process_line(self, raw_line: str, source_type: str) -> PipelineResult:
@@ -28,5 +36,6 @@ class ProcessingPipeline:
         if event is None:
             return PipelineResult(event=None, alerts=[])
 
-        alerts = self.engine.process(event)
-        return PipelineResult(event=event, alerts=alerts)
+        enriched_event = self.enrichment.enrich(event)
+        alerts = self.engine.process(enriched_event)
+        return PipelineResult(event=enriched_event, alerts=alerts)
