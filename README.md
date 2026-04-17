@@ -1,6 +1,8 @@
 # 0xchou00 platform
 
-![0xchou00 banner](https://raw.githubusercontent.com/0xchou00/0xchou00-SEIM/main/media/0xchou00_banner.svg)
+<p align="center">
+  <img src="https://github.com/0xchou00/0xchou00-SEIM/blob/main/media/0xchou00_banner.svg?raw=1" alt="0xchou00 banner" width="100%">
+</p>
 
 `0xchou00 platform` is a local-first detection stack for SSH and web logs. The public version is intentionally small: it parses raw log lines, turns them into a stable event schema, runs a few high-signal detectors, stores the results in SQLite, and exposes the pipeline through a FastAPI backend and a browser dashboard.
 
