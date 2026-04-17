@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime
 
 from app.detection.base import BaseDetector
 from app.models.alert import Alert
@@ -64,10 +63,11 @@ class FrequencyAnomalyDetector(BaseDetector):
             return []
 
         self._alerted_buckets.add(dedupe_key)
+        severity = "high" if event.is_malicious else "medium"
         return [
             Alert(
                 detector=self.name,
-                severity="medium",
+                severity=severity,
                 title="Traffic spike anomaly",
                 description=(
                     f"Observed {state.current_count} events from {event.source_ip} in the current "
@@ -82,6 +82,9 @@ class FrequencyAnomalyDetector(BaseDetector):
                     "baseline_average": round(baseline_average, 2),
                     "window_seconds": self.window_seconds,
                     "baseline_windows": self.baseline_windows,
+                    "country": event.country,
+                    "is_malicious": event.is_malicious,
+                    "reputation_score": event.reputation_score,
                 },
             )
         ]

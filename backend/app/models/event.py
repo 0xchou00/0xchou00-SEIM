@@ -21,6 +21,10 @@ class LogEvent:
     http_path: str | None = None
     http_status: int | None = None
     http_user_agent: str | None = None
+    country: str | None = None
+    is_malicious: bool = False
+    reputation_score: int | None = None
+    enrichment_source: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

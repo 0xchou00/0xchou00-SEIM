@@ -36,7 +36,7 @@ class BruteForceDetector(BaseDetector):
             return []
 
         self._last_alert_size[event.source_ip] = failure_count
-        severity = self._severity_for(failure_count)
+        severity = self._severity_for(event, failure_count)
         return [
             Alert(
                 detector=self.name,
@@ -54,6 +54,9 @@ class BruteForceDetector(BaseDetector):
                     "username": event.username,
                     "window_seconds": self.config.window_seconds,
                     "failure_count": failure_count,
+                    "country": event.country,
+                    "is_malicious": event.is_malicious,
+                    "reputation_score": event.reputation_score,
                 },
             )
         ]
@@ -70,7 +73,11 @@ class BruteForceDetector(BaseDetector):
         if not window:
             self._last_alert_size.pop(source_ip, None)
 
-    def _severity_for(self, failure_count: int) -> str:
+    def _severity_for(self, event: LogEvent, failure_count: int) -> str:
+        if event.is_malicious:
+            return "critical"
+        if event.reputation_score and event.reputation_score >= 75:
+            return "critical"
         if failure_count >= self.config.failure_threshold * self.config.critical_multiplier:
             return "critical"
         return "high"

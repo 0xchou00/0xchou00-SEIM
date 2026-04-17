@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>0xchou00 platform</title>
+  <title>0xchou00 Detection Tool</title>
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body class="theme-shell">
@@ -12,7 +12,7 @@
       <img src="/assets/brand-mark.svg" alt="0xchou00 mascot">
       <div>
         <span class="brand-kicker">[0xchou00]</span>
-        <strong>0xchou00 platform</strong>
+        <strong>0xchou00 Detection Tool</strong>
       </div>
     </a>
     <nav class="nav-links">
@@ -25,17 +25,17 @@
   <main class="landing-shell">
     <section class="hero-grid">
       <div class="hero-copy">
-        <p class="terminal-prefix">[0xchou00] realtime detection stack initialized</p>
-        <h1>0xchou00 platform</h1>
-        <p class="hero-tagline">A Linux-ready SIEM platform for SSH and web telemetry, built with a cyber-terminal identity and engineered for SOC, SIEM, and detection workflows.</p>
+        <p class="terminal-prefix">[0xchou00] detection tool initialized</p>
+        <h1>0xchou00 Detection Tool</h1>
+        <p class="hero-tagline">Single-node telemetry collection, enrichment, detection, and correlation for SSH and web logs.</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="/dashboard">Launch Dashboard</a>
           <a class="btn btn-secondary" href="#architecture">Inspect Architecture</a>
         </div>
         <ul class="signal-list">
           <li>Normalized event pipeline for SSH and HTTP logs</li>
-          <li>Rules, heuristics, anomalies, and integrity verification</li>
-          <li>FastAPI backend with terminal-inspired operator UI</li>
+          <li>Rules, enrichment, anomaly checks, and correlation</li>
+          <li>FastAPI backend with a lightweight operator dashboard</li>
         </ul>
       </div>
       <div class="hero-card panel-grid">
@@ -56,11 +56,11 @@
       <div class="feature-grid">
         <article class="feature-card">
           <h3>Telemetry ingestion</h3>
-          <p>Accepts SSH and Apache/Nginx log lines through the API, normalizes them, and preserves raw plus structured representations.</p>
+          <p>Accepts SSH and Apache/Nginx log lines through the API or the local agent, normalizes them, and preserves raw plus structured representations.</p>
         </article>
         <article class="feature-card">
           <h3>Detection stack</h3>
-          <p>Combines brute-force and suspicious-IP heuristics with YAML rules and a frequency-based anomaly detector.</p>
+          <p>Combines brute-force and suspicious-IP heuristics with YAML rules, a rolling-window anomaly detector, and post-alert correlation.</p>
         </article>
         <article class="feature-card">
           <h3>Integrity controls</h3>
@@ -68,7 +68,7 @@
         </article>
         <article class="feature-card">
           <h3>Operator access</h3>
-          <p>Ships with API-key RBAC, a dashboard, Linux install script, and a systemd service for direct deployment.</p>
+          <p>Ships with API-key RBAC, a local tailing agent, Linux install scripts, and systemd units for direct deployment.</p>
         </article>
       </div>
     </section>
@@ -79,19 +79,19 @@
         <h2>Architecture overview</h2>
       </div>
       <div class="architecture-terminal">
-        <pre>logs -> normalize -> detect -> sqlite -> integrity chain -> api -> dashboard</pre>
+        <pre>agent/api -> normalize -> enrich -> detect -> correlate -> sqlite -> integrity chain -> api -> dashboard</pre>
         <div class="arch-grid">
           <div>
-            <h3>Detection core</h3>
-            <p>Source-agnostic structured events feed brute-force logic, suspicious-IP heuristics, YAML rules, and anomaly windows.</p>
+            <h3>Detection path</h3>
+            <p>Source-aware parsers feed structured events into enrichment, heuristics, YAML rules, anomaly checks, and correlation rules.</p>
           </div>
           <div>
             <h3>Persistence</h3>
-            <p>SQLite stores normalized logs, generated alerts, API keys, and chain entries for a single-node deployment model.</p>
+            <p>SQLite stores normalized events, generated alerts, enrichment cache entries, API keys, and chain records for a single-node deployment model.</p>
           </div>
           <div>
-            <h3>Verification</h3>
-            <p>Each record is sealed into a chain entry with payload hashes and previous-entry linkage.</p>
+            <h3>Operational path</h3>
+            <p>The local agent tails auth and Nginx access logs, tracks offsets across restarts, and forwards batched lines into the same ingestion API.</p>
           </div>
         </div>
       </div>
@@ -99,19 +99,19 @@
 
     <section class="section-block">
       <div class="section-header">
-        <span class="terminal-prefix">demo_preview</span>
-        <h2>Live demo section</h2>
+        <span class="terminal-prefix">operator_view</span>
+        <h2>Operator view</h2>
       </div>
       <div class="preview-grid">
         <div class="preview-card">
           <span class="preview-label">dashboard</span>
           <img src="/assets/brand-mark.svg" alt="dashboard preview mascot">
-          <p>Live logs stream, alerts feed, and source/severity/time filters under a neon terminal-inspired visual system.</p>
+          <p>Live logs, detector alerts, correlated alerts, and source or severity filters under a terminal-inspired visual system.</p>
           <a class="btn btn-secondary" href="/dashboard">View live UI</a>
         </div>
         <div class="preview-card">
           <span class="preview-label">documentation</span>
-          <p>Linux installation, API usage, detection behavior, and operator testing are documented end to end inside the project root.</p>
+          <p>Installation, agent behavior, enrichment, correlation, and operational limits are documented in the repository root.</p>
           <a class="btn btn-secondary" href="#features">Review Capabilities</a>
         </div>
       </div>
