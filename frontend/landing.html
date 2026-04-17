@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>0xchou00 platform</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body class="theme-shell">
+  <header class="nav-shell">
+    <a class="brand-lockup" href="/">
+      <img src="/assets/brand-mark.svg" alt="0xchou00 mascot">
+      <div>
+        <span class="brand-kicker">[0xchou00]</span>
+        <strong>0xchou00 platform</strong>
+      </div>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#about">Developer</a>
+      <a class="nav-cta" href="/dashboard">Open Dashboard</a>
+    </nav>
+  </header>
+
+  <main class="landing-shell">
+    <section class="hero-grid">
+      <div class="hero-copy">
+        <p class="terminal-prefix">[0xchou00] realtime detection stack initialized</p>
+        <h1>0xchou00 platform</h1>
+        <p class="hero-tagline">A Linux-ready SIEM platform for SSH and web telemetry, built with a cyber-terminal identity and engineered for SOC, SIEM, and detection workflows.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="/dashboard">Launch Dashboard</a>
+          <a class="btn btn-secondary" href="https://github.com/0xchou00">GitHub</a>
+        </div>
+        <ul class="signal-list">
+          <li>Normalized event pipeline for SSH and HTTP logs</li>
+          <li>Rules, heuristics, anomalies, and integrity verification</li>
+          <li>FastAPI backend with terminal-inspired operator UI</li>
+        </ul>
+      </div>
+      <div class="hero-card panel-grid">
+        <img class="hero-mascot" src="/assets/brand-mark.svg" alt="0xchou00 mascot">
+        <div class="terminal-card">
+          <span class="terminal-prefix">root@0xchou00:~#</span>
+          <code>curl -H "X-API-Key: viewer" http://127.0.0.1:8000/integrity/verify</code>
+          <p>{ "valid": true, "chain_head": "..." }</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section-block">
+      <div class="section-header">
+        <span class="terminal-prefix">feature_map</span>
+        <h2>What it does</h2>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <h3>Telemetry ingestion</h3>
+          <p>Accepts SSH and Apache/Nginx log lines through the API, normalizes them, and preserves raw plus structured representations.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Detection stack</h3>
+          <p>Combines brute-force and suspicious-IP heuristics with YAML rules and a frequency-based anomaly detector.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Integrity controls</h3>
+          <p>Hash-chains every persisted log and alert, then exposes verification through a dedicated endpoint.</p>
+        </article>
+        <article class="feature-card">
+          <h3>Operator access</h3>
+          <p>Ships with API-key RBAC, a dashboard, Linux install script, and a systemd service for direct deployment.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="architecture" class="section-block">
+      <div class="section-header">
+        <span class="terminal-prefix">system_layout</span>
+        <h2>Architecture overview</h2>
+      </div>
+      <div class="architecture-terminal">
+        <pre>logs -> normalize -> detect -> sqlite -> integrity chain -> api -> dashboard</pre>
+        <div class="arch-grid">
+          <div>
+            <h3>Detection core</h3>
+            <p>Source-agnostic structured events feed brute-force logic, suspicious-IP heuristics, YAML rules, and anomaly windows.</p>
+          </div>
+          <div>
+            <h3>Persistence</h3>
+            <p>SQLite stores normalized logs, generated alerts, API keys, and chain entries for a single-node deployment model.</p>
+          </div>
+          <div>
+            <h3>Verification</h3>
+            <p>Each record is sealed into a chain entry with payload hashes and previous-entry linkage.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-header">
+        <span class="terminal-prefix">demo_preview</span>
+        <h2>Live demo section</h2>
+      </div>
+      <div class="preview-grid">
+        <div class="preview-card">
+          <span class="preview-label">dashboard</span>
+          <img src="/assets/brand-mark.svg" alt="dashboard preview mascot">
+          <p>Live logs stream, alerts feed, and source/severity/time filters under a neon terminal-inspired visual system.</p>
+          <a class="btn btn-secondary" href="/dashboard">View live UI</a>
+        </div>
+        <div class="preview-card">
+          <span class="preview-label">documentation</span>
+          <p>Linux installation, API usage, detection behavior, and operator testing are documented end to end inside the project root.</p>
+          <a class="btn btn-secondary" href="https://github.com/0xchou00">Repository</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" class="section-block about-grid">
+      <div>
+        <span class="terminal-prefix">whoami</span>
+        <h2>About the developer</h2>
+        <p class="about-name">Omar CHOUHANI</p>
+        <p>Cybersecurity engineering student focused on SOC, SIEM, and detection engineering.</p>
+        <p>This platform is built as a flagship engineering project under the 0xchou00 identity to demonstrate practical defensive tooling, not just tool operation.</p>
+      </div>
+      <div class="about-card">
+        <p class="terminal-prefix">git remote -v</p>
+        <a href="https://github.com/0xchou00">https://github.com/0xchou00</a>
+        <p>[0xchou00]</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,34 @@
+rules:
+  - id: ssh-invalid-user-burst
+    title: Invalid SSH user burst
+    description: Repeated SSH failures against invalid usernames from the same source.
+    severity: medium
+    source_type: ssh
+    event_type: authentication_failure
+    match:
+      raw_message:
+        contains: "invalid user"
+    aggregation:
+      group_by: source_ip
+      window_seconds: 120
+      threshold: 3
+
+  - id: web-scanner-user-agent
+    title: Scanner user agent detected
+    description: HTTP request matched a known scanning or probing user agent.
+    severity: high
+    source_type: apache
+    event_type: http_request
+    match:
+      http_user_agent:
+        regex: "(nikto|sqlmap|masscan|python-requests|curl)"
+
+  - id: nginx-scanner-user-agent
+    title: Scanner user agent detected
+    description: HTTP request matched a known scanning or probing user agent.
+    severity: high
+    source_type: nginx
+    event_type: http_request
+    match:
+      http_user_agent:
+        regex: "(nikto|sqlmap|masscan|python-requests|curl)"
