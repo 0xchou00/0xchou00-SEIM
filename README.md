@@ -1,10 +1,10 @@
-# 0xchou00 platform
+# 0xchou00
 
 <p align="center">
   <img src="https://github.com/0xchou00/0xchou00-SEIM/blob/main/media/0xchou00_banner.svg?raw=1" alt="0xchou00 banner" width="100%">
 </p>
 
-`0xchou00 platform` is a local-first detection stack for SSH and web logs. The public version is intentionally small: it parses raw log lines, turns them into a stable event schema, runs a few high-signal detectors, stores the results in SQLite, and exposes the pipeline through a FastAPI backend and a browser dashboard.
+`0xchou00` is a small detection tool for SSH and web logs. It parses raw log lines, normalizes them into a stable event schema, runs a focused set of detectors, stores results in SQLite, and exposes the workflow through a FastAPI backend and a browser dashboard.
 
 This repository is meant to be tested, not just read.
 
@@ -28,7 +28,7 @@ raw logs -> normalizer -> detection engine -> sqlite -> integrity chain -> API -
 
 What this repo is:
 
-- a single-node security telemetry and detection platform
+- a single-node security telemetry and detection tool
 - easy to install on Linux
 - easy to validate with curl and sample attack traffic
 
@@ -36,7 +36,7 @@ What this repo is not:
 
 - a distributed SIEM cluster
 - a full syslog infrastructure
-- a managed SOC product
+- a managed SOC service
 - a fake AI analytics demo
 
 ## Quick start
@@ -119,7 +119,7 @@ curl http://127.0.0.1:8000/integrity/verify \
 
 ## Detection model
 
-The public version ships four detection layers:
+The current build uses four detection layers:
 
 1. `BruteForceDetector`
 Counts failed SSH authentications per source IP in a 60-second window. Alerts at 5 failures. Escalates severity when the count keeps climbing.
@@ -144,7 +144,7 @@ Default database path:
 
 - `backend/data/0xchou00.db`
 
-SQLite was chosen here for one reason: the product should be runnable by one person on one machine without extra infrastructure.
+SQLite was chosen for one reason: the tool should run on one machine without extra infrastructure.
 
 ## Files worth reading
 
