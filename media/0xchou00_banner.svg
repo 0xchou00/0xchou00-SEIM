@@ -7,9 +7,9 @@
   <path d="M0 400H1600" stroke="#111111"/>
   <path d="M110 80L330 80" stroke="#9EFF00" stroke-width="4"/>
   <path d="M110 400L520 400" stroke="#9EFF00" stroke-width="4"/>
-  <text x="104" y="150" fill="#FFFFFF" font-family="Courier New, monospace" font-size="88" font-weight="700">0xchou00 platform</text>
-  <text x="110" y="212" fill="#9EFF00" font-family="Courier New, monospace" font-size="30" font-weight="700">Detection engineering | SIEM architecture | tamper-evident telemetry</text>
-  <text x="110" y="286" fill="#FFFFFF" font-family="Courier New, monospace" font-size="26">[0xchou00] Linux-ready security telemetry pipeline for SOC workflows</text>
+  <text x="104" y="150" fill="#FFFFFF" font-family="Courier New, monospace" font-size="78" font-weight="700">0xchou00 Detection Tool</text>
+  <text x="110" y="212" fill="#9EFF00" font-family="Courier New, monospace" font-size="28" font-weight="700">Detection engineering | correlation | tamper-evident telemetry</text>
+  <text x="110" y="286" fill="#FFFFFF" font-family="Courier New, monospace" font-size="26">[0xchou00] single-node log collection, enrichment, and alerting</text>
   <g transform="translate(1170 78)">
     <rect width="240" height="240" rx="28" fill="#050505"/>
     <rect x="28" y="30" width="154" height="122" rx="16" fill="#070707" stroke="#9EFF00" stroke-width="6"/>

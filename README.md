@@ -1,43 +1,44 @@
-# 0xchou00
+# 0xchou00 — Lightweight Security Detection Tool
 
 <p align="center">
   <img src="https://github.com/0xchou00/0xchou00-SEIM/blob/main/media/0xchou00_banner.svg?raw=1" alt="0xchou00 banner" width="100%">
 </p>
 
-`0xchou00` is a small detection tool for SSH and web logs. It parses raw log lines, normalizes them into a stable event schema, runs a focused set of detectors, stores results in SQLite, and exposes the workflow through a FastAPI backend and a browser dashboard.
+`0xchou00` is a single-node security detection tool for SSH and web telemetry. It is built for direct inspection: a local agent or API ingests log lines, the backend normalizes them, applies enrichment, runs detector logic, stores events and alerts in SQLite, seals records into a hash chain, and exposes the result through FastAPI and a polling dashboard.
 
-This repository is meant to be tested, not just read.
+## Scope
 
-## What is implemented
+This repository is a lightweight detection tool:
 
-- SSH brute-force detection with sliding-window counting
-- Suspicious web activity detection based on request rate, error ratio, and sensitive path access
-- YAML-driven detection rules without changing Python code
-- Frequency-based anomaly detection using rolling event buckets
-- Tamper-evident hash chaining for stored logs and alerts
-- Role-based API access with viewer and analyst test keys
-- Live dashboard backed by polling, not screenshots or mock data
+- one node
+- one SQLite database
+- one FastAPI service
+- one optional local agent
 
-## Execution path
+It is not trying to be:
+
+- a distributed SIEM
+- a log lake
+- an endpoint security suite
+- a managed SOC service
+
+## Implemented capabilities
+
+- SSH brute-force detection with a sliding authentication-failure window
+- Web scanning detection based on request rate, error ratio, sensitive path access, and scanner user agents
+- YAML-driven detector rules in `rules/default_rules.yml`
+- Frequency anomaly detection using rolling buckets
+- IP enrichment with local GeoIP support, optional AbuseIPDB checks, and a static blacklist fallback
+- Alert correlation using `rules/correlation_rules.yml`
+- Hash-chained event and alert integrity verification
+- API-key RBAC for viewer, analyst, and admin roles
+- Local tailing agent for `/var/log/auth.log` and `/var/log/nginx/access.log`
+
+## Processing path
 
 ```text
-raw logs -> normalizer -> detection engine -> sqlite -> integrity chain -> API -> dashboard
+agent/api -> normalize -> enrich -> detect -> correlate -> sqlite -> integrity chain -> api -> dashboard
 ```
-
-## Public scope
-
-What this repo is:
-
-- a single-node security telemetry and detection tool
-- easy to install on Linux
-- easy to validate with curl and sample attack traffic
-
-What this repo is not:
-
-- a distributed SIEM cluster
-- a full syslog infrastructure
-- a managed SOC service
-- a fake AI analytics demo
 
 ## Quick start
 
@@ -47,10 +48,10 @@ cd 0xchou00-SEIM/siem-project
 chmod +x install.sh
 ./install.sh
 sudo systemctl start 0xchou00.service
-sudo systemctl status 0xchou00.service
+sudo systemctl start 0xchou00-agent.service
 ```
 
-Open:
+Useful endpoints:
 
 - `http://127.0.0.1:8000/`
 - `http://127.0.0.1:8000/dashboard`
@@ -61,15 +62,15 @@ Default test API keys:
 - viewer: `siem-viewer-dev-key`
 - analyst: `siem-analyst-dev-key`
 
-## Minimal test flow
+## Minimal verification flow
 
-Check service health:
+Health:
 
 ```bash
 curl http://127.0.0.1:8000/health
 ```
 
-Ingest five failed SSH logins from one source:
+Inject failed SSH logins:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/ingest \
@@ -94,70 +95,49 @@ curl "http://127.0.0.1:8000/alerts?since_minutes=60" \
   -H "X-API-Key: siem-viewer-dev-key"
 ```
 
-Read normalized logs:
+Read enriched logs:
 
 ```bash
 curl "http://127.0.0.1:8000/logs?since_minutes=60" \
   -H "X-API-Key: siem-viewer-dev-key"
 ```
 
-Verify integrity state:
+Verify integrity:
 
 ```bash
 curl http://127.0.0.1:8000/integrity/verify \
   -H "X-API-Key: siem-viewer-dev-key"
 ```
 
-## Main routes
+## Main interfaces
 
-- `GET /health` returns service status plus log and alert counts
-- `POST /ingest` accepts raw lines for supported source types
-- `GET /alerts` filters stored alerts
-- `GET /logs` filters stored normalized events
-- `GET /integrity/verify` checks the hash chain
-- `GET /dashboard` opens the operator view
+- `POST /ingest` accepts batches of SSH or web log lines
+- `GET /logs` returns normalized and enriched events
+- `GET /alerts` returns detector and correlation alerts from the same store
+- `GET /integrity/verify` validates the hash chain
+- `agent/agent.py` tails local log files and forwards batches to `/ingest`
 
-## Detection model
+## Design choices
 
-The current build uses four detection layers:
+- SQLite keeps the tool easy to run and inspect on one host
+- GeoIP is local-first so enrichment can work without outbound calls
+- Threat-intelligence lookups are cached and refreshed asynchronously so ingestion does not block on external APIs
+- Correlation is rule-driven and stored as ordinary alerts so the dashboard and API do not need a separate query path
 
-1. `BruteForceDetector`
-Counts failed SSH authentications per source IP in a 60-second window. Alerts at 5 failures. Escalates severity when the count keeps climbing.
+## Documents
 
-2. `SuspiciousIPDetector`
-Looks for noisy web clients: high request rate, high HTTP error ratio, and requests to sensitive paths such as `/.env` or `/.git/config`.
-
-3. `YAMLRuleDetector`
-Loads custom rules from `rules/default_rules.yml`. Supports direct field matching, substring checks, regex matching, and aggregation windows.
-
-4. `FrequencyAnomalyDetector`
-Builds a short baseline from recent windows and alerts when current activity spikes above that baseline. This is threshold-based anomaly detection, not a machine-learning claim.
-
-## Storage model
-
-- logs are stored in `logs`
-- alerts are stored in `alerts`
-- API keys are stored in `api_keys`
-- hash-chain state is stored in `chain_entries`
-
-Default database path:
-
-- `backend/data/0xchou00.db`
-
-SQLite was chosen for one reason: the tool should run on one machine without extra infrastructure.
-
-## Files worth reading
-
-- `ARCHITECTURE.md` for the file tree and module boundaries
-- `TESTING.md` for reproducible attack simulations
-- `rules/default_rules.yml` for public detection content
-- `docs/0xchou00_public_platform_article.tex` for the technical article version
+- `ARCHITECTURE.md`
+- `AGENT.md`
+- `ENRICHMENT.md`
+- `CORRELATION.md`
+- `SECURITY.md`
+- `TESTING.md`
+- `docs/0xchou00_detection_tool.pdf`
 
 ## Current limits
 
 - supported raw sources are SSH and web access logs
+- GeoIP depends on a local MaxMind-compatible database if geographic context is required
+- AbuseIPDB enrichment is optional and cached, so first-seen IPs may only have local context
 - the dashboard uses polling instead of WebSockets
-- storage is single-node SQLite
-- detections are explainable and inspectable, but intentionally narrow
-
-Those are design constraints, not hidden gaps.
+- storage remains single-node SQLite by design
