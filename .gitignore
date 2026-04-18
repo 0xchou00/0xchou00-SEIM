@@ -1,8 +1,14 @@
 .venv/
 __pycache__/
 *.pyc
+docs/*.aux
+docs/*.bbl
+docs/*.blg
+docs/*.log
+docs/*.out
 backend/data/
 logs/*.log
 .env
+agent/state.json
 media/linkedin_post.md
 media/medium_article.md
