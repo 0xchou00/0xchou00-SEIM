@@ -11,7 +11,7 @@ from app.models.event import LogEvent
 
 
 class DetectionEngine:
-    """Run structured events through registered detectors."""
+    """Run structured events through the configured detector set."""
 
     def __init__(self, config: PipelineConfig | None = None) -> None:
         pipeline_config = config or PipelineConfig()

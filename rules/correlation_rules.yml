@@ -1,0 +1,24 @@
+rules:
+  - id: ssh_bruteforce_then_web_scan
+    title: SSH brute force followed by web scanning
+    description: The same source triggered SSH brute-force activity and suspicious web behavior inside a five-minute window.
+    severity: critical
+    conditions:
+      time_window_seconds: 300
+      same_source_ip: true
+      alerts:
+        - detector: brute_force
+        - detector: suspicious_ip
+
+  - id: traffic_spike_with_sensitive_path
+    title: Traffic spike paired with sensitive path access
+    description: A traffic anomaly was followed by access to a sensitive web path from the same source IP.
+    severity: high
+    conditions:
+      time_window_seconds: 300
+      same_source_ip: true
+      alerts:
+        - detector: anomaly_frequency
+        - detector: suspicious_ip
+          metadata:
+            reason: sensitive_path
