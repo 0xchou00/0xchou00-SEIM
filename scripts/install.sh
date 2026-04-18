@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$PROJECT_ROOT/backend"
-VENV_DIR="$PROJECT_ROOT/.venv"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BACKEND_DIR="$ROOT_DIR/backend"
+VENV_DIR="$ROOT_DIR/.venv"
 SYSTEMD_DIR="/etc/systemd/system"
 SERVICE_NAME="0xchou00.service"
 AGENT_SERVICE_NAME="0xchou00-agent.service"
-ENV_FILE="$PROJECT_ROOT/.env"
-AGENT_CONFIG_FILE="$PROJECT_ROOT/agent/config.yaml"
+ENV_FILE="$ROOT_DIR/.env"
+AGENT_CONFIG_FILE="$ROOT_DIR/agent/config.yaml"
+SYSTEMD_SOURCE_DIR="$ROOT_DIR/scripts/systemd"
 
 if ! command -v python3 >/dev/null 2>&1; then
   echo "[ERROR] python3 is required but was not found."
@@ -20,12 +21,12 @@ python3 -m venv "$VENV_DIR"
 
 echo "[2/7] Installing Python dependencies"
 "$VENV_DIR/bin/pip" install --upgrade pip
-"$VENV_DIR/bin/pip" install -r "$PROJECT_ROOT/requirements.txt"
+"$VENV_DIR/bin/pip" install -r "$ROOT_DIR/requirements.txt"
 
 echo "[3/7] Preparing runtime directories"
-mkdir -p "$PROJECT_ROOT/logs"
+mkdir -p "$ROOT_DIR/logs"
 mkdir -p "$BACKEND_DIR/data"
-mkdir -p "$PROJECT_ROOT/agent"
+mkdir -p "$ROOT_DIR/agent"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "[4/7] Creating default environment file"
@@ -64,11 +65,11 @@ else
 fi
 
 echo "[6/7] Installing systemd units"
-sudo cp "$PROJECT_ROOT/deploy/$SERVICE_NAME" "$SYSTEMD_DIR/$SERVICE_NAME"
-sudo cp "$PROJECT_ROOT/deploy/$AGENT_SERVICE_NAME" "$SYSTEMD_DIR/$AGENT_SERVICE_NAME"
-sudo sed -i "s|__PROJECT_ROOT__|$PROJECT_ROOT|g" "$SYSTEMD_DIR/$SERVICE_NAME"
+sudo cp "$SYSTEMD_SOURCE_DIR/$SERVICE_NAME" "$SYSTEMD_DIR/$SERVICE_NAME"
+sudo cp "$SYSTEMD_SOURCE_DIR/$AGENT_SERVICE_NAME" "$SYSTEMD_DIR/$AGENT_SERVICE_NAME"
+sudo sed -i "s|__PROJECT_ROOT__|$ROOT_DIR|g" "$SYSTEMD_DIR/$SERVICE_NAME"
 sudo sed -i "s|__BACKEND_DIR__|$BACKEND_DIR|g" "$SYSTEMD_DIR/$SERVICE_NAME"
-sudo sed -i "s|__PROJECT_ROOT__|$PROJECT_ROOT|g" "$SYSTEMD_DIR/$AGENT_SERVICE_NAME"
+sudo sed -i "s|__PROJECT_ROOT__|$ROOT_DIR|g" "$SYSTEMD_DIR/$AGENT_SERVICE_NAME"
 sudo systemctl daemon-reload
 sudo systemctl enable "$SERVICE_NAME"
 sudo systemctl enable "$AGENT_SERVICE_NAME"
