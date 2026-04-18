@@ -44,5 +44,5 @@ The agent can read local log files and send them to the tool API. It should run 
 
 - API keys are simple shared secrets, not a full identity system
 - SQLite is suitable for one node, not hostile multi-writer deployments
-- the dashboard stores the chosen API key in browser local storage for operator convenience
+- the bundled operator UI stores the chosen API key in browser local storage for operator convenience
 - the integrity chain detects tampering after the fact; it does not stop a privileged local attacker from deleting the database entirely

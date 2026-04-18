@@ -53,7 +53,7 @@ Correlation alerts are stored in the same `alerts` table as detector alerts with
 Because they are ordinary alerts, they are already visible through:
 
 - `GET /alerts`
-- dashboard alert panels
+- the bundled operator UI
 
 ## Why this shape
 

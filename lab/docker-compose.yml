@@ -1,0 +1,51 @@
+services:
+  attacker:
+    build:
+      context: .
+      dockerfile: attacker.Dockerfile
+    container_name: 0xchou00-attacker
+    command: ["sleep", "infinity"]
+    networks:
+      - detection_lab
+
+  victim:
+    build:
+      context: .
+      dockerfile: victim.Dockerfile
+    container_name: 0xchou00-victim
+    hostname: victim
+    ports:
+      - "2222:22"
+      - "8080:80"
+    volumes:
+      - victim_logs:/shared-logs
+    networks:
+      - detection_lab
+
+  siem:
+    build:
+      context: ..
+      dockerfile: lab/siem.Dockerfile
+    container_name: 0xchou00-siem
+    environment:
+      SIEM_DB_PATH: /opt/0xchou00/backend/data/0xchou00.db
+      SIEM_ADMIN_API_KEY: siem-admin-dev-key
+      SIEM_ANALYST_API_KEY: siem-analyst-dev-key
+      SIEM_VIEWER_API_KEY: siem-viewer-dev-key
+    ports:
+      - "8000:8000"
+    depends_on:
+      - victim
+    volumes:
+      - victim_logs:/lab-logs:ro
+      - siem_data:/opt/0xchou00/backend/data
+    networks:
+      - detection_lab
+
+networks:
+  detection_lab:
+    driver: bridge
+
+volumes:
+  victim_logs:
+  siem_data:

@@ -1,0 +1,16 @@
+api:
+  url: "http://127.0.0.1:8000/ingest"
+  api_key: "siem-analyst-dev-key"
+batch:
+  max_lines: 5
+  flush_interval_seconds: 1
+tail:
+  poll_interval_seconds: 0.5
+state_file: "/opt/0xchou00/agent/state.json"
+sources:
+  - source_type: "ssh"
+    path: "/lab-logs/auth.log"
+    start_at_end: true
+  - source_type: "nginx"
+    path: "/lab-logs/nginx/access.log"
+    start_at_end: true
