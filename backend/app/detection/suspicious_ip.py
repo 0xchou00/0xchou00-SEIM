@@ -50,10 +50,11 @@ class SuspiciousIPDetector(BaseDetector):
             return []
 
         self._triggered_keys.add(key)
+        severity = "critical" if event.is_malicious else "high"
         return [
             Alert(
                 detector=self.name,
-                severity="high",
+                severity=severity,
                 title="Suspicious web request rate",
                 description=(
                     f"Source {event.source_ip} generated {count} web requests within "
@@ -67,6 +68,9 @@ class SuspiciousIPDetector(BaseDetector):
                     "reason": "request_rate",
                     "request_count": count,
                     "window_seconds": self.config.request_rate_window_seconds,
+                    "country": event.country,
+                    "is_malicious": event.is_malicious,
+                    "reputation_score": event.reputation_score,
                 },
             )
         ]
@@ -89,10 +93,11 @@ class SuspiciousIPDetector(BaseDetector):
             return []
 
         self._triggered_keys.add(key)
+        severity = "high" if event.is_malicious else "medium"
         return [
             Alert(
                 detector=self.name,
-                severity="medium",
+                severity=severity,
                 title="Suspicious HTTP error ratio",
                 description=(
                     f"Source {event.source_ip} produced {errors}/{total} HTTP error responses "
@@ -107,6 +112,9 @@ class SuspiciousIPDetector(BaseDetector):
                     "errors": errors,
                     "total_requests": total,
                     "error_ratio": ratio,
+                    "country": event.country,
+                    "is_malicious": event.is_malicious,
+                    "reputation_score": event.reputation_score,
                 },
             )
         ]
@@ -121,10 +129,11 @@ class SuspiciousIPDetector(BaseDetector):
             return []
 
         self._triggered_keys.add(key)
+        severity = "high" if event.is_malicious else "medium"
         return [
             Alert(
                 detector=self.name,
-                severity="medium",
+                severity=severity,
                 title="Sensitive path access attempt",
                 description=(
                     f"Source {event.source_ip} requested a sensitive path: {event.http_path}."
@@ -137,6 +146,9 @@ class SuspiciousIPDetector(BaseDetector):
                     "path": event.http_path,
                     "status": event.http_status,
                     "user_agent": event.http_user_agent,
+                    "country": event.country,
+                    "is_malicious": event.is_malicious,
+                    "reputation_score": event.reputation_score,
                 },
             )
         ]
